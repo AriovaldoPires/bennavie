@@ -1,0 +1,344 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif}
+#app{background:#1a2e1a;min-height:600px;border-radius:12px;overflow:hidden;position:relative}
+#topbar{background:rgba(0,0,0,0.7);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+#topbar h1{color:#e8f5e0;font-size:15px;font-weight:600;letter-spacing:0.5px}
+.legend{display:flex;gap:10px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#ccc;cursor:pointer;padding:3px 8px;border-radius:20px;border:1px solid transparent;transition:all 0.2s}
+.leg:hover{border-color:#888}
+.leg.active{border-color:#fff;background:rgba(255,255,255,0.1)}
+.dot-leg{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+#stats{background:rgba(0,0,0,0.5);padding:6px 16px;display:flex;gap:16px;flex-wrap:wrap}
+.stat{font-size:11px;color:#aaa}
+.stat b{color:#e8f5e0;font-size:13px}
+#mapwrap{position:relative;overflow:auto;max-height:480px}
+#mapimg{width:100%;display:block;opacity:0.85;pointer-events:none;user-select:none}
+#lotesdiv{position:absolute;top:0;left:0;width:100%;height:100%}
+.lote-btn{position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,0.8);cursor:pointer;transform:translate(-50%,-50%);transition:all 0.15s;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.8);z-index:10}
+.lote-btn:hover{transform:translate(-50%,-50%) scale(1.4);z-index:20;border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,0.6)}
+.lote-btn.DISPONIVEL{background:#3a9e3a}
+.lote-btn.RESERVADO{background:#e6a800}
+.lote-btn.VENDIDO{background:#c0392b}
+.lote-btn.NEGOCIACAO{background:#2980b9}
+.lote-btn.INDISPONIVEL{background:#666}
+.lote-btn.hidden-filter{opacity:0.1;pointer-events:none}
+
+#modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center}
+#modal-bg.open{display:flex}
+#modal{background:#fff;border-radius:14px;width:380px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4)}
+#modal-header{padding:16px 18px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eee}
+#modal-title{font-size:16px;font-weight:700;color:#1a2e1a}
+#modal-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+#modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#666;line-height:1;padding:4px}
+#modal-body{padding:16px 18px}
+.field-row{display:flex;gap:10px;margin-bottom:10px}
+.field{flex:1}
+.field label{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:3px}
+.field input,.field select,.field textarea{width:100%;border:1px solid #ddd;border-radius:6px;padding:6px 8px;font-size:13px;color:#222;background:#fafafa;font-family:inherit}
+.field textarea{resize:vertical;min-height:52px}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#3a9e3a;background:#fff}
+.modal-actions{display:flex;gap:8px;padding:12px 18px;border-top:1px solid #eee}
+.btn-save{background:#1a6e1a;color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;flex:1}
+.btn-save:hover{background:#145e14}
+.btn-cancel{background:#f0f0f0;color:#444;border:none;border-radius:8px;padding:8px 18px;font-size:13px;cursor:pointer}
+.btn-cancel:hover{background:#e0e0e0}
+.status-badge-DISPONIVEL{background:#d4edda;color:#155724}
+.status-badge-RESERVADO{background:#fff3cd;color:#856404}
+.status-badge-VENDIDO{background:#f8d7da;color:#721c24}
+.status-badge-NEGOCIACAO{background:#cce5ff;color:#004085}
+.status-badge-INDISPONIVEL{background:#e2e3e5;color:#383d41}
+.field select option{padding:4px}
+#search-bar{padding:6px 16px;background:rgba(0,0,0,0.4);display:flex;gap:8px;align-items:center}
+#search-bar input{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 10px;color:#fff;font-size:12px;width:180px}
+#search-bar input::placeholder{color:#aaa}
+#search-result{font-size:12px;color:#aaa}
+</style>
+
+<div id="app">
+<div id="topbar">
+  <h1>🏡 CONDOMÍNIO BENNAVIE — Espelho de Vendas Interativo</h1>
+  <div class="legend" id="legend">
+    <div class="leg active" data-filter="DISPONIVEL" onclick="toggleFilter('DISPONIVEL',this)"><div class="dot-leg" style="background:#3a9e3a"></div>Disponível</div>
+    <div class="leg active" data-filter="RESERVADO" onclick="toggleFilter('RESERVADO',this)"><div class="dot-leg" style="background:#e6a800"></div>Reservado</div>
+    <div class="leg active" data-filter="VENDIDO" onclick="toggleFilter('VENDIDO',this)"><div class="dot-leg" style="background:#c0392b"></div>Vendido</div>
+    <div class="leg active" data-filter="NEGOCIACAO" onclick="toggleFilter('NEGOCIACAO',this)"><div class="dot-leg" style="background:#2980b9"></div>Em Negociação</div>
+    <div class="leg active" data-filter="INDISPONIVEL" onclick="toggleFilter('INDISPONIVEL',this)"><div class="dot-leg" style="background:#666"></div>Indisponível</div>
+  </div>
+</div>
+<div id="search-bar">
+  <input type="text" id="searchInput" placeholder="Buscar lote ou quadra... ex: A-05" oninput="searchLote(this.value)">
+  <span id="search-result"></span>
+</div>
+<div id="stats">
+  <div class="stat">Total: <b id="s-total">204</b></div>
+  <div class="stat" style="color:#7dca7d">Disponível: <b id="s-disp" style="color:#7dca7d">-</b></div>
+  <div class="stat" style="color:#ffd966">Reservado: <b id="s-res" style="color:#ffd966">-</b></div>
+  <div class="stat" style="color:#e88">Vendido: <b id="s-vend" style="color:#e88">-</b></div>
+  <div class="stat" style="color:#88bbdd">Negociação: <b id="s-neg" style="color:#88bbdd">-</b></div>
+  <div class="stat">Indisponível: <b id="s-ind">-</b></div>
+</div>
+<div id="mapwrap">
+  <img id="mapimg" src="/mnt/user-data/uploads/WhatsApp_Image_2026-06-05_at_11_25_31__3_.jpeg" onerror="this.style.display='none'" alt="Planta Bennavie">
+  <div id="lotesdiv"></div>
+</div>
+</div>
+
+<div id="modal-bg" onclick="closeModal(event)">
+<div id="modal">
+  <div id="modal-header">
+    <span id="modal-title">Lote A-01</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="modal-status" class="status-badge-DISPONIVEL">Disponível</span>
+      <button id="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+  </div>
+  <div id="modal-body">
+    <div class="field-row">
+      <div class="field"><label>Status</label>
+        <select id="f-status">
+          <option value="DISPONIVEL">Disponível</option>
+          <option value="RESERVADO">Reservado</option>
+          <option value="VENDIDO">Vendido</option>
+          <option value="NEGOCIACAO">Em Negociação</option>
+          <option value="INDISPONIVEL">Indisponível</option>
+        </select>
+      </div>
+      <div class="field"><label>Área Total (m²)</label><input id="f-area" type="text" placeholder="ex: 450,00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Testada/Frente (m)</label><input id="f-frente" type="text" placeholder="ex: 12,00"></div>
+      <div class="field"><label>Fundo (m)</label><input id="f-fundo" type="text" placeholder="ex: 30,00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Lateral Esq. (m)</label><input id="f-lat-esq" type="text" placeholder="ex: 37,50"></div>
+      <div class="field"><label>Lateral Dir. (m)</label><input id="f-lat-dir" type="text" placeholder="ex: 37,50"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Posição Solar</label>
+        <select id="f-solar">
+          <option value="">— Selecione —</option>
+          <option value="Nascente">Nascente (Leste)</option>
+          <option value="Poente">Poente (Oeste)</option>
+          <option value="Norte">Norte</option>
+          <option value="Sul">Sul</option>
+          <option value="Nascente/Norte">Nascente/Norte</option>
+          <option value="Nascente/Sul">Nascente/Sul</option>
+          <option value="Poente/Norte">Poente/Norte</option>
+          <option value="Poente/Sul">Poente/Sul</option>
+        </select>
+      </div>
+      <div class="field"><label>Valor (R$)</label><input id="f-valor" type="text" placeholder="ex: 180.000,00"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Comprador / Reservante</label><input id="f-comprador" type="text" placeholder="Nome completo"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>CPF/CNPJ</label><input id="f-cpf" type="text" placeholder="000.000.000-00"></div>
+      <div class="field"><label>Telefone</label><input id="f-tel" type="text" placeholder="(55) 99999-0000"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Corretor</label><input id="f-corretor" type="text" placeholder="Nome do corretor"></div>
+      <div class="field"><label>Imobiliária</label><input id="f-imob" type="text" placeholder="Nome da imobiliária"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Data da Negociação</label><input id="f-data" type="date"></div>
+      <div class="field"><label>Tipo de Venda</label>
+        <select id="f-tipo">
+          <option value="">— Selecione —</option>
+          <option value="EXCLUSIVO">Exclusivo</option>
+          <option value="PARCEIRO">Parceiro</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Observações</label><textarea id="f-obs" placeholder="Anotações sobre o lote..."></textarea></div>
+    </div>
+  </div>
+  <div class="modal-actions">
+    <button class="btn-cancel" onclick="closeModalDirect()">Cancelar</button>
+    <button class="btn-save" onclick="saveLote()">💾 Salvar</button>
+  </div>
+</div>
+</div>
+
+<script>
+const QUADRAS = {
+  A:{lotes:24,area:13440.26},B:{lotes:21,area:9725.76},C:{lotes:14,area:7748.85},
+  D:{lotes:11,area:6572.69},E:{lotes:6,area:2835.00},F:{lotes:13,area:6039.00},
+  G:{lotes:14,area:6781.35},H:{lotes:14,area:6960.24},I:{lotes:20,area:9095.16},
+  J:{lotes:6,area:3700.13},K:{lotes:13,area:7484.62},L:{lotes:19,area:12012.12},
+  M:{lotes:16,area:10944.00},N:{lotes:5,area:2215.73},O:{lotes:8,area:4419.20}
+};
+
+let lotesData = {};
+let currentLote = null;
+let activeFilters = new Set(['DISPONIVEL','RESERVADO','VENDIDO','NEGOCIACAO','INDISPONIVEL']);
+
+function getLoteId(q,n){return `${q}-${String(n).padStart(2,'0')}`}
+
+function initLotes(){
+  try{const saved=localStorage.getItem('bennavie_lotes');if(saved)lotesData=JSON.parse(saved);}catch(e){}
+  Object.entries(QUADRAS).forEach(([q,info])=>{
+    for(let i=1;i<=info.lotes;i++){
+      const id=getLoteId(q,i);
+      if(!lotesData[id]){
+        const aMedia=(info.area/info.lotes).toFixed(2);
+        lotesData[id]={status:'DISPONIVEL',quadra:q,numero:i,area:aMedia,frente:'',fundo:'',lat_esq:'',lat_dir:'',solar:'',valor:'',comprador:'',cpf:'',tel:'',corretor:'',imob:'',data:'',tipo:'',obs:''};
+      }
+    }
+  });
+}
+
+function savePersist(){try{localStorage.setItem('bennavie_lotes',JSON.stringify(lotesData));}catch(e){}}
+
+function getImgDims(){
+  const img=document.getElementById('mapimg');
+  const wrap=document.getElementById('mapwrap');
+  return{w:img.offsetWidth||wrap.offsetWidth,h:img.offsetHeight||480};
+}
+
+const GRID_POSITIONS = generatePositions();
+
+function generatePositions(){
+  const pos={};
+  const {innerWidth:vw}=window;
+  const imgW = 1000, imgH = 480;
+
+  const quadraLayouts = {
+    A:{row:0.38,cols:24,x0:0.07,x1:0.38},
+    B:{row:0.48,cols:21,x0:0.08,x1:0.36},
+    C:{row:0.38,cols:14,x0:0.54,x1:0.72},
+    D:{row:0.38,cols:11,x0:0.74,x1:0.90},
+    E:{row:0.30,cols:6,x0:0.74,x1:0.90},
+    F:{row:0.65,cols:13,x0:0.74,x1:0.90},
+    G:{row:0.55,cols:14,x0:0.54,x1:0.72},
+    H:{row:0.78,cols:14,x0:0.54,x1:0.72},
+    I:{row:0.27,cols:20,x0:0.40,x1:0.54},
+    J:{row:0.55,cols:6,x0:0.42,x1:0.54},
+    K:{row:0.65,cols:13,x0:0.28,x1:0.42},
+    L:{row:0.28,cols:19,x0:0.18,x1:0.40},
+    M:{row:0.48,cols:16,x0:0.38,x1:0.56},
+    N:{row:0.60,cols:5,x0:0.56,x1:0.65},
+    O:{row:0.75,cols:8,x0:0.07,x1:0.22},
+  };
+
+  Object.entries(quadraLayouts).forEach(([q,cfg])=>{
+    const total=QUADRAS[q].lotes;
+    const cols=Math.min(cfg.cols,total);
+    const spanX=cfg.x1-cfg.x0;
+    for(let i=0;i<total;i++){
+      const row=Math.floor(i/cols);
+      const col=i%cols;
+      const x=cfg.x0+(col+0.5)*(spanX/Math.min(cols,total));
+      const y=cfg.row+row*0.09;
+      pos[getLoteId(q,i+1)]={x,y};
+    }
+  });
+  return pos;
+}
+
+function renderLotes(){
+  const wrap=document.getElementById('mapwrap');
+  const img=document.getElementById('mapimg');
+  const div=document.getElementById('lotesdiv');
+  div.innerHTML='';
+  const W=img.offsetWidth||800;
+  const H=img.offsetHeight||480;
+
+  Object.entries(QUADRAS).forEach(([q])=>{
+    for(let i=1;i<=QUADRAS[q].lotes;i++){
+      const id=getLoteId(q,i);
+      const d=lotesData[id];
+      const p=GRID_POSITIONS[id];
+      if(!p)return;
+      const btn=document.createElement('button');
+      btn.className=`lote-btn ${d.status}`;
+      btn.title=`${id} • ${d.status}`;
+      btn.textContent=i<=9?i:'';
+      btn.style.left=(p.x*100)+'%';
+      btn.style.top=(p.y*100)+'%';
+      if(!activeFilters.has(d.status))btn.classList.add('hidden-filter');
+      btn.onclick=()=>openModal(id);
+      div.appendChild(btn);
+    }
+  });
+  updateStats();
+}
+
+function updateStats(){
+  const counts={DISPONIVEL:0,RESERVADO:0,VENDIDO:0,NEGOCIACAO:0,INDISPONIVEL:0};
+  Object.values(lotesData).forEach(d=>counts[d.status]=(counts[d.status]||0)+1);
+  document.getElementById('s-disp').textContent=counts.DISPONIVEL;
+  document.getElementById('s-res').textContent=counts.RESERVADO;
+  document.getElementById('s-vend').textContent=counts.VENDIDO;
+  document.getElementById('s-neg').textContent=counts.NEGOCIACAO;
+  document.getElementById('s-ind').textContent=counts.INDISPONIVEL;
+}
+
+function openModal(id){
+  currentLote=id;
+  const d=lotesData[id];
+  document.getElementById('modal-title').textContent=`Quadra ${d.quadra} — Lote ${String(d.numero).padStart(2,'0')}`;
+  const statusLabels={DISPONIVEL:'Disponível',RESERVADO:'Reservado',VENDIDO:'Vendido',NEGOCIACAO:'Em Negociação',INDISPONIVEL:'Indisponível'};
+  const ms=document.getElementById('modal-status');
+  ms.textContent=statusLabels[d.status]||d.status;
+  ms.className=`status-badge-${d.status}`;
+  ['status','area','frente','fundo','lat_esq','lat_dir','solar','valor','comprador','cpf','tel','corretor','imob','data','tipo','obs'].forEach(k=>{
+    const el=document.getElementById('f-'+k.replace('_','-'));
+    if(el)el.value=d[k]||'';
+  });
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModalDirect(){
+  document.getElementById('modal-bg').classList.remove('open');
+  currentLote=null;
+}
+
+function closeModal(e){if(e.target===document.getElementById('modal-bg'))closeModalDirect();}
+
+function saveLote(){
+  if(!currentLote)return;
+  const d=lotesData[currentLote];
+  ['status','area','frente','fundo','lat_esq','lat_dir','solar','valor','comprador','cpf','tel','corretor','imob','data','tipo','obs'].forEach(k=>{
+    const el=document.getElementById('f-'+k.replace('_','-'));
+    if(el)d[k]=el.value;
+  });
+  savePersist();
+  renderLotes();
+  closeModalDirect();
+}
+
+function toggleFilter(status,el){
+  if(activeFilters.has(status)){activeFilters.delete(status);el.classList.remove('active');}
+  else{activeFilters.add(status);el.classList.add('active');}
+  renderLotes();
+}
+
+function searchLote(val){
+  const v=val.trim().toUpperCase();
+  const res=document.getElementById('search-result');
+  if(!v){res.textContent='';document.querySelectorAll('.lote-btn').forEach(b=>b.style.outline='');return;}
+  document.querySelectorAll('.lote-btn').forEach(b=>b.style.outline='');
+  const match=Object.keys(lotesData).find(id=>id.includes(v)||id.replace('-','').includes(v));
+  if(match){
+    res.textContent=`→ ${match} (${lotesData[match].status})`;
+    const btns=document.querySelectorAll('.lote-btn');
+    btns.forEach(b=>{if(b.title.startsWith(match))b.style.outline='3px solid #fff';});
+  }else{res.textContent='Não encontrado';}
+}
+
+document.getElementById('f-status').addEventListener('change',function(){
+  const statusLabels={DISPONIVEL:'Disponível',RESERVADO:'Reservado',VENDIDO:'Vendido',NEGOCIACAO:'Em Negociação',INDISPONIVEL:'Indisponível'};
+  const ms=document.getElementById('modal-status');
+  ms.textContent=statusLabels[this.value]||this.value;
+  ms.className=`status-badge-${this.value}`;
+});
+
+initLotes();
+document.getElementById('mapimg').onload=()=>renderLotes();
+setTimeout(renderLotes,300);
+window.addEventListener('resize',renderLotes);
+</script>
